@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Network Monitoring</title>
+
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+          integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+          integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"/>
+
+    <style>
+        body {
+            background-color: #0e1111;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app" class="container">
+    <div class="row">
+        <div class="col-xs-6 col-md-3">
+            <h1>Login</h1>
+        </div>
+    </div>
+</div>
+
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/vue"></script>
+<script>
+    var netmon = new Vue({
+        el: '#app',
+        data: {
+            ws: null,           // websocket var
+            terminal: null,     // terminal to update status
+            outlets: []
+        },
+
+        created: function() {
+            this.ws = new WebSocket("ws://whisky.24bet7.com:9000/ws");
+//                this.ws = new WebSocket("ws://localhost:9000/ws");
+
+            var thisApp = this;
+            this.ws.addEventListener('message', function(e) {
+                var msg = JSON.parse(e.data);
+                thisApp.terminal = msg.acct;
+                thisApp.updateStatus();
+            });
+        },
+
+        methods: {
+
+            isOn: function(t) {
+                return t == 1;
+            },
+
+            isWait: function(t) {
+                return t == 0;
+            },
+
+            isOff: function(t) {
+                return t == 2;
+            },
+
+            findAccount: function(terminal) {
+                if (terminal.account == this.terminal) {
+                    terminal.status = (terminal.status == 2) ? 1 : (1 - terminal.status);
+                }
+            },
+
+            findTerminal: function(outlet) {
+                outlet.terminals.find(this.findAccount);
+            },
+
+            findOutlet: function() {
+                this.outlets.find(this.findTerminal);
+            },
+
+            updateStatus: function() {
+                this.findOutlet();
+            }
+        },
+
+    });
+</script>
+</body>
+</html>
