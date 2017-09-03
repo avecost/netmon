@@ -87,6 +87,7 @@ func (c *Client) update(m []byte) {
 
 	//dbmsg := &DBHeader{Event: "DB-UPDATE", Operator: "ABLE", Outlet: 1, Terminal: 1, Online: 1}
 	dashboard, _ := json.Marshal(&DBHeader{Event: "DB-UPDATE", Netsum: netsum})
+	//log.Println(dashboard)
 
 	c.hub.dashboard <- dashboard
 }
@@ -118,7 +119,7 @@ func (c *Client) readPump() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.update(message)
-		c.hub.broadcast <- message
+		//c.hub.broadcast <- message
 	}
 }
 

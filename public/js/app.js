@@ -4,9 +4,8 @@ var App = new Vue({
     el: '#app',
 
     data: {
-        franchise: '',
+        franchise: [],
         serverDT: '',
-        showLog: '',
         test: 'hello',
         UtilPercent: 0,
         ServerT: ''
@@ -18,8 +17,6 @@ var App = new Vue({
         }.bind(this);
 
         ws.onmessage = function (evt) {
-            this.showLog = evt.data;
-
             var t = JSON.parse(evt.data);
             if (t.Event === "DB-UPDATE") {
                 this.franchise = t.Netsum;
@@ -45,20 +42,25 @@ var App = new Vue({
 
         getInfoBoxClass: function(t, o) {
             var c;
-            this.UtilPercent = ((o / t) * 100).toFixed(2);
-            if (this.UtilPercent > 75) {
-                c = ['info-box', 'bg-green'];
+            var perUtil = ((o / t) * 100).toFixed(2);
+            if (perUtil > 75) {
+                // c = ['info-box', 'bg-green'];
+                c = {'info-box': true, 'bg-green': true};
             }
-            else if (this.UtilPercent > 50) {
-                c = ['info-box', 'bg-aqua'];
+            else if (perUtil > 50) {
+                c = {'info-box': true, 'bg-aqua': true};
             }
-            else if (this.UtilPercent > 25) {
-                c = ['info-box', 'bg-yellow'];
+            else if (perUtil > 25) {
+                c = {'info-box': true, 'bg-yellow': true};
             }
             else {
-                c = ['info-box', 'bg-red'];
+                c = {'info-box': true, 'bg-red': true};
             }
             return c;
+        },
+
+        getUtilization: function (t, o) {
+            return ((o / t) * 100).toFixed(2);
         }
     }
 

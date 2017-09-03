@@ -35,6 +35,7 @@ func main() {
 	go hub.run()
 
 	//http.HandleFunc("/", serveHome)
+	http.Handle("/able", http.FileServer(http.Dir("./public/")))
 	http.Handle("/", http.FileServer(http.Dir("./public/")))
 	//http.Handle("/", http.FileServer(http.Dir("/home/whiskie/netmon/public/")))
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

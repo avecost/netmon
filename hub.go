@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"time"
-	"encoding/json"
+	"fmt"
 )
 
 // Hub contains the information for
@@ -104,10 +104,6 @@ func (h *Hub) run() {
 		case <-hb.C:
 			t := PushTime()
 
-			var x Uptime
-			json.Unmarshal(t, &x)
-			log.Printf("Server time ticker <%s> %s", x.Event, x.ServerT)
-
 			for client := range h.clients {
 				select {
 				case client.send <- t:
@@ -123,7 +119,8 @@ func (h *Hub) run() {
 }
 
 func (h *Hub) update(t string) {
-	tNow := time.Now().Local().Format("2006-01-02 15:04:05")
+	tNow, _ := time.LoadLocation("Asia/Manila")
+	t2 := time.Now().In(tNow).Format("2006-01-02 15:04:05")
 	for i := range h.iest {
 		//franchisee = h.iest[i].Operator
 		for j := range h.iest[i].Outlets {
@@ -133,9 +130,9 @@ func (h *Hub) update(t string) {
 				if ts[k].Account == t {
 					ts[k].Status = 1
 					if len(ts[k].Online) == 0 {
-						ts[k].Online = tNow
+						ts[k].Online = t2
 					}
-					ts[k].Lastupdate = tNow
+					ts[k].Lastupdate = t2
 				}
 			}
 		}
@@ -164,20 +161,22 @@ func (h *Hub) netsum(m map[string]iestStat) {
 }
 
 func (h *Hub) chkOnline() {
-	tNow := time.Now().Local()
-	log.Println("Checking online terminal every 15s...", tNow)
+	tLoc, _ := time.LoadLocation("Asia/Manila")
+	t2 := time.Now().In(tLoc)
 
 	for i := range h.iest {
 		for j := range h.iest[i].Outlets {
 			ts := h.iest[i].Outlets[j].Terminals
 			for k := range ts {
 				if len(ts[k].Lastupdate) > 0 {
-					log.Println("Last Update: ", ts[k].Lastupdate)
-
-					t, _ := time.Parse("2006-01-02 15:04:05", ts[k].Lastupdate)
+					t, _ := time.ParseInLocation("2006-01-02 15:04:05", ts[k].Lastupdate, tLoc)
+					fmt.Println("Time update : ", t)
+					fmt.Println("Time now : ", t2)
+					tdiff := t2.Sub(t)
+					fmt.Println(tdiff)
 					//if tNow.Sub(t) > (time.Minute * 15) {
-					if tNow.Sub(t) > (time.Second * 15) {
-						log.Println("Updating: ", k)
+					if t2.Sub(t) > (time.Minute * 15) {
+						log.Println("Updating: ", ts[k].Account)
 
 						ts[k].Status = 0
 						ts[k].Online = ""
