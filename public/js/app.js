@@ -1,6 +1,8 @@
-var ws = new WebSocket("ws://whisky.24bet7.com:9000/ws");
+var ws = new WebSocket("ws://localhost:9000/ws");
 
 var App = new Vue({
+    delimiters: ['${', '}'],
+
     el: '#app',
 
     data: {
