@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"time"
-	"fmt"
+	"encoding/json"
 )
 
 // Hub contains the information for
@@ -66,10 +66,10 @@ func newHub() *Hub {
 
 func (h *Hub) run() {
 	// ticker check inactive terminal every 15s
-	tc := time.NewTicker(15 * time.Second)
+	tc := time.NewTicker(time.Second * TICKER_ONLINE_TIME)
 	// heartbeat ticker runs every second to
 	// correspond to server time change
-	hb := time.NewTicker(1 * time.Second)
+	hb := time.NewTicker(time.Second * TICKER_SERVER_TIME)
 	for {
 		select {
 		case client := <-h.register:
@@ -119,12 +119,10 @@ func (h *Hub) run() {
 }
 
 func (h *Hub) update(t string) {
-	tNow, _ := time.LoadLocation("Asia/Manila")
-	t2 := time.Now().In(tNow).Format("2006-01-02 15:04:05")
+	tNow, _ := time.LoadLocation(TIME_ZONE)
+	t2 := time.Now().In(tNow).Format(TIME_FORMAT)
 	for i := range h.iest {
-		//franchisee = h.iest[i].Operator
 		for j := range h.iest[i].Outlets {
-			//outlet = iest[i].Outlets[j].Name
 			ts := h.iest[i].Outlets[j].Terminals
 			for k := range ts {
 				if ts[k].Account == t {
@@ -145,7 +143,6 @@ func (h *Hub) netsum(m map[string]iestStat) {
 		opName := h.iest[i].Operator					// operator name
 		for j := range h.iest[i].Outlets {
 			o = len(h.iest[i].Outlets)					// outlet count
-			//outlet = iest[i].Outlets[j].Name
 			ts := h.iest[i].Outlets[j].Terminals
 
 			t = t + len(ts)		// terminal count
@@ -161,7 +158,7 @@ func (h *Hub) netsum(m map[string]iestStat) {
 }
 
 func (h *Hub) chkOnline() {
-	tLoc, _ := time.LoadLocation("Asia/Manila")
+	tLoc, _ := time.LoadLocation(TIME_ZONE)
 	t2 := time.Now().In(tLoc)
 
 	for i := range h.iest {
@@ -169,16 +166,11 @@ func (h *Hub) chkOnline() {
 			ts := h.iest[i].Outlets[j].Terminals
 			for k := range ts {
 				if len(ts[k].Lastupdate) > 0 {
-					t, _ := time.ParseInLocation("2006-01-02 15:04:05", ts[k].Lastupdate, tLoc)
-					fmt.Println("Time update : ", t)
-					fmt.Println("Time now : ", t2)
-					tdiff := t2.Sub(t)
-					fmt.Println(tdiff)
-					//if tNow.Sub(t) > (time.Minute * 15) {
-					if t2.Sub(t) > (time.Minute * 15) {
-						log.Println("Updating: ", ts[k].Account)
+					t, _ := time.ParseInLocation(TIME_FORMAT, ts[k].Lastupdate, tLoc)
+					if t2.Sub(t) > (time.Minute * CLIENT_TTL) {
+						log.Printf("Offline: %s %s\n", h.iest[i].Operator, ts[k].Account)
 
-						ts[k].Status = 0
+						ts[k].Status = 2
 						ts[k].Online = ""
 						ts[k].Lastupdate = ""
 					}
@@ -186,4 +178,9 @@ func (h *Hub) chkOnline() {
 			}
 		}
 	}
+
+	netsum := make(map[string]iestStat)
+	h.netsum(netsum)
+	dashboard, _ := json.Marshal(&DBHeader{Event: "DB-UPDATE", Netsum: netsum})
+	h.dashboard <- dashboard
 }

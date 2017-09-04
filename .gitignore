@@ -12,3 +12,4 @@
 # ignore the gogland files
 .idea/*
 /netmon-linux
+/public/fonts/
