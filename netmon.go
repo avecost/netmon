@@ -4,9 +4,10 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"github.com/gorilla/mux"
 	"html/template"
 	"net/url"
+	"fmt"
+	"github.com/gorilla/sessions"
 )
 
 const (
@@ -17,17 +18,20 @@ const (
 	TIME_ZONE 			= "Asia/Manila"			// local datetime
 	TIME_FORMAT 		= "2006-01-02 15:04:05"	// how datetime is formatted
 
-	STATIC_DIR 			= "/public/"			// css/js folder
+	STATIC_PATH 		= "/public/"	// URL css/js folder
+	STATIC_DIR			= "public"		// folder name
 )
 
 var addr = flag.String("addr", ":9000", "http service address")
+var netmonSessions = sessions.NewCookieStore([]byte("9c3803d77fb840311dfd9dabd01da5e1"))
+
 //var iest []Franchisee
 
 func logRoute(s *url.URL, m string) {
 	log.Printf("%s - %s\n", s, m)
 }
 
-func getDashboardHandler(w http.ResponseWriter, r *http.Request) {
+func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/dashboard" {
 		http.Error(w, "Not found", 404)
@@ -39,11 +43,11 @@ func getDashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("tmpl/dashboard.html"))
+	tmpl := template.Must(template.ParseFiles("tmpl/dashboard.gtpl"))
 	tmpl.Execute(w, nil)
 }
 
-func getLoginHandler(w http.ResponseWriter, r *http.Request) {
+func homeHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/" {
 		http.Error(w, "Not found", 404)
@@ -55,11 +59,11 @@ func getLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("tmpl/login.html"))
+	tmpl := template.Must(template.ParseFiles("tmpl/login.gtpl"))
 	tmpl.Execute(w, nil)
 }
 
-func postLoginHandler(w http.ResponseWriter, r *http.Request) {
+func postHomeHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/login" {
 		http.Error(w, "Not found", 404)
@@ -67,21 +71,50 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		t, _ := template.ParseFiles("tmpl/login.html")
+		t, _ := template.ParseFiles("tmpl/login.gtpl")
 		t.Execute(w, nil)
 		return
 	}
 
+	// TODO: perform validation of Credentials
 	r.ParseForm()
-	log.Println("username: ", r.Form["username"])
-	log.Println("password: ", r.Form["password"])
+	u := r.FormValue("username")
+	p := r.FormValue("password")
+
+	if u == "test" && p == "test" {
+		session, _ := netmonSessions.Get(r, "netmon")
+		session.Values["user"] = u
+		session.Save(r, w)
+
+		http.Redirect(w, r, "/dashboard", 301)
+	} else {
+		fmt.Fprintf(w, "%s", "Invalid credentials!")
+	}
 }
 
-func NewRouter() *mux.Router {
-	r := mux.NewRouter().StrictSlash(true)
-	r.PathPrefix(STATIC_DIR).Handler(http.StripPrefix(STATIC_DIR, http.FileServer(http.Dir("."+STATIC_DIR))))
+func sessHandler(w http.ResponseWriter, r *http.Request) {
+	logRoute(r.URL, r.Method)
 
-	return r
+	session, _ := netmonSessions.Get(r, "netmon")
+	u := session.Values["user"]
+	fmt.Fprintf(w, "%s", u)
+}
+
+func userAllowed(r string, u string) (b bool) {
+	// TODO: perform lookup functions for route and user
+	fmt.Printf("R: %s U: %s\n", r, u)
+
+	return true
+}
+
+func SecuredRoute(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if ! userAllowed(r.URL.Path, "test") {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
 }
 
 func main() {
@@ -92,31 +125,23 @@ func main() {
 	// run our main server
 	go hub.run()
 
-	r := NewRouter()
-	r.HandleFunc("/", getLoginHandler).Methods("GET")
-	r.HandleFunc("/login", postLoginHandler).Methods("POST")
-	r.HandleFunc("/dashboard", getDashboardHandler).Methods("GET")
+	// setup our routes
+	mux := http.NewServeMux()
+	mux.Handle("/", http.HandlerFunc(homeHandler))
+	mux.Handle("/login", http.HandlerFunc(postHomeHandler))
+	mux.Handle("/dashboard", SecuredRoute(http.HandlerFunc(dashboardHandler)))
+	mux.Handle("/sess", SecuredRoute(http.HandlerFunc(sessHandler)))
 
-	// handler for websocket
-	r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	// websocket route
+	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
 
-	if err := http.ListenAndServe(*addr, r); err != nil {
+	// where the sites assets are located (js/css/img)
+	mux.Handle(STATIC_PATH, http.StripPrefix(STATIC_PATH, http.FileServer(http.Dir(STATIC_DIR))))
+
+	if err := http.ListenAndServe(*addr, mux); err != nil {
 		log.Fatal("Error starting: ", err)
 	}
-
-	//http.HandleFunc("/", serveHome)
-	//http.Handle("/able", http.FileServer(http.Dir("./public/")))
-	//http.Handle("/", http.FileServer(http.Dir("./public/")))
-	//http.Handle("/", http.FileServer(http.Dir("/home/whiskie/netmon/public/")))
-	//http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-	//	serveWs(hub, w, r)
-	//})
-	//
-	//err := http.ListenAndServe(*addr, nil)
-	//if err != nil {
-	//	log.Fatal("ListenAndServe: ", err)
-	//}
 
 }
