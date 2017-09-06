@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"time"
 )
 
 const (
@@ -32,15 +33,27 @@ func logRoute(s *url.URL, m string) {
 	log.Printf("%s - %s\n", s, m)
 }
 
+func notFoundPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "tmpl/404.gtpl")
+}
+
+func badMethodPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "tmpl/405.gtpl")
+}
+
+func unauthorizedPage(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "tmpl/401.gtpl")
+}
+
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/dashboard" {
-		http.Error(w, "Not found", 404)
+		notFoundPage(w, r)
 		return
 	}
 
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
+		badMethodPage(w, r)
 		return
 	}
 
@@ -51,12 +64,12 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/" {
-		http.Error(w, "Not found", 404)
+		notFoundPage(w, r)
 		return
 	}
 
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 405)
+		badMethodPage(w, r)
 		return
 	}
 
@@ -67,7 +80,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/login" {
-		http.Error(w, "Not found", 404)
+		notFoundPage(w, r)
 		return
 	}
 
@@ -98,6 +111,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
+<<<<<<< HEAD
 	sess, err := netmonSess.Get(r, "netmon")
 	if err != nil {
 		http.Error(w, err.Error(), 400)
@@ -113,6 +127,15 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/", 301)
+=======
+	sessionOld, err := netmonSessions.Get(r, "netmon")
+	fmt.Println("Session in logout")
+	fmt.Println(sessionOld)
+	if err = sessionOld.Save(r, w); err != nil {
+		fmt.Printf("Error saving session: %v", err)
+	}
+	http.Redirect(w, r, "/", 302)
+>>>>>>> bb93e3e3ef43d51daaec1b296178ff0087282ca2
 }
 
 func sessHandler(w http.ResponseWriter, r *http.Request) {
@@ -130,10 +153,21 @@ func userAllowed(r string, u string) (b bool) {
 	return true
 }
 
+func NoCache(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, private, max-age=0")
+		w.Header().Set("Expires", time.Unix(0, 0).Format(http.TimeFormat))
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("X-Accel-Expires", "0")
+
+		h.ServeHTTP(w, r)
+	})
+}
+
 func SecuredRoute(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if ! userAllowed(r.URL.Path, "test") {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			unauthorizedPage(w, r)
 			return
 		}
 		h.ServeHTTP(w, r)
@@ -149,6 +183,7 @@ func main() {
 	go hub.run()
 
 	// setup our routes
+<<<<<<< HEAD
 	mux := mux.NewRouter()
 	// route to the static folder (css/js/img)
 	mux.PathPrefix("/public/").Handler(http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
@@ -157,6 +192,14 @@ func main() {
 	mux.HandleFunc("/login", loginHandler)
 	mux.HandleFunc("/logout", logoutHandler)
 	mux.HandleFunc("/dashboard", dashboardHandler)
+=======
+	mux := http.NewServeMux()
+	mux.Handle("/", http.HandlerFunc(homeHandler))
+	mux.Handle("/login", http.HandlerFunc(postHomeHandler))
+	mux.Handle("/logout", http.HandlerFunc(logoutHandler))
+	mux.Handle("/dashboard", NoCache(SecuredRoute(http.HandlerFunc(dashboardHandler))))
+	mux.Handle("/sess", NoCache(SecuredRoute(http.HandlerFunc(sessHandler))))
+>>>>>>> bb93e3e3ef43d51daaec1b296178ff0087282ca2
 
 	// websocket route
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
