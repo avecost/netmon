@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"net/url"
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 )
 
@@ -23,7 +24,7 @@ const (
 )
 
 var addr = flag.String("addr", ":9000", "http service address")
-var netmonSessions = sessions.NewCookieStore([]byte("9c3803d77fb840311dfd9dabd01da5e1"))
+var netmonSess = sessions.NewCookieStore([]byte("9c3803d77fb840311dfd9dabd01da5e1"))
 
 //var iest []Franchisee
 
@@ -63,7 +64,7 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-func postHomeHandler(w http.ResponseWriter, r *http.Request) {
+func loginHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/login" {
 		http.Error(w, "Not found", 404)
@@ -82,9 +83,13 @@ func postHomeHandler(w http.ResponseWriter, r *http.Request) {
 	p := r.FormValue("password")
 
 	if u == "test" && p == "test" {
-		session, _ := netmonSessions.Get(r, "netmon")
-		session.Values["user"] = u
-		session.Save(r, w)
+		sess, _ := netmonSess.Get(r, "netmon")
+		sess.Values["user"] = u
+		err := sess.Save(r, w)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
 
 		http.Redirect(w, r, "/dashboard", 301)
 	} else {
@@ -92,10 +97,28 @@ func postHomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	sess, err := netmonSess.Get(r, "netmon")
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	sess.Options.MaxAge = -1
+
+	err = sess.Save(r, w)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	http.Redirect(w, r, "/", 301)
+}
+
 func sessHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 
-	session, _ := netmonSessions.Get(r, "netmon")
+	session, _ := netmonSess.Get(r, "netmon")
 	u := session.Values["user"]
 	fmt.Fprintf(w, "%s", u)
 }
@@ -126,22 +149,21 @@ func main() {
 	go hub.run()
 
 	// setup our routes
-	mux := http.NewServeMux()
-	mux.Handle("/", http.HandlerFunc(homeHandler))
-	mux.Handle("/login", http.HandlerFunc(postHomeHandler))
-	mux.Handle("/dashboard", SecuredRoute(http.HandlerFunc(dashboardHandler)))
-	mux.Handle("/sess", SecuredRoute(http.HandlerFunc(sessHandler)))
+	mux := mux.NewRouter()
+	// route to the static folder (css/js/img)
+	mux.PathPrefix("/public/").Handler(http.StripPrefix("/public/", http.FileServer(http.Dir("./public"))))
+
+	mux.HandleFunc("/", homeHandler)
+	mux.HandleFunc("/login", loginHandler)
+	mux.HandleFunc("/logout", logoutHandler)
+	mux.HandleFunc("/dashboard", dashboardHandler)
 
 	// websocket route
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		serveWs(hub, w, r)
 	})
 
-	// where the sites assets are located (js/css/img)
-	mux.Handle(STATIC_PATH, http.StripPrefix(STATIC_PATH, http.FileServer(http.Dir(STATIC_DIR))))
-
 	if err := http.ListenAndServe(*addr, mux); err != nil {
 		log.Fatal("Error starting: ", err)
 	}
-
 }
