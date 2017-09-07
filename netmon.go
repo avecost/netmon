@@ -109,6 +109,16 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func testHandler(w http.ResponseWriter, r *http.Request) {
+	t, _ := template.ParseFiles("tmpl/test.gtpl")
+	t.Execute(w, nil)
+}
+
+func test2Handler(w http.ResponseWriter, r *http.Request) {
+	t, _ := template.ParseFiles("tmpl/test2.gtpl")
+	t.Execute(w, nil)
+}
+
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	sess, err := netmonSess.Get(r, "netmon")
 	if err != nil {
@@ -157,7 +167,8 @@ func main() {
 
 	flag.Parse()
 	hub := newHub()
-
+	// create room based on operator
+	hub.createRoom()
 	// run our main server
 	go hub.run()
 
@@ -170,6 +181,8 @@ func main() {
 	mux.HandleFunc("/login", loginHandler)
 	mux.HandleFunc("/logout", logoutHandler)
 	mux.HandleFunc("/dashboard", dashboardHandler)
+	mux.HandleFunc("/test", testHandler)
+	mux.HandleFunc("/test2", test2Handler)
 
 	// websocket route
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

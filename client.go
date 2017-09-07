@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 
 	"github.com/gorilla/websocket"
+	"fmt"
 )
 
 const (
@@ -54,41 +55,47 @@ type DBHeader struct {
 	Netsum 		map[string]iestStat
 }
 
-//var HandleData = func(c *Conn, data []byte, msg *Message) error {
-//	switch msg.Event {
-//	case "join":
-//		c.Join(msg.Room)
-//	case "leave":
-//		c.Leave(msg.Room)
-//	default:
-//		if msg.Dst != "" {
-//			if dst, ok := c.Rooms[msg.Room].Members[msg.Dst]; ok {
-//				dst.Send <- data
-//			}
-//		} else {
-//			c.Emit(data, msg)
-//		}
-//	}
-//	Emitter.Emit(msg.Event, c, data, msg)
-//	return nil
-//}
-
-func (c *Client) update(m []byte) {
-	var netsum map[string]iestStat
-	netsum = make(map[string]iestStat)
-
+func (c *Client) processMsg(m []byte) {
 	e := NetmonHeader{}
 	json.Unmarshal(m, &e)
 
+	switch e.Event {
+	case "JOIN":
+		fmt.Printf("%s JOIN Room: %s\n", e.Acct, e.Outlet)
+		r := c.hub.rooms[e.Outlet]
+		if r == nil {
+			r = make(map[*Client]bool)
+			c.hub.rooms[e.Outlet] = r
+		}
+		c.hub.rooms[e.Outlet][c] = true
+	case "LEAVE":
+		fmt.Printf("%u LEAVE room: %s\n", e.Acct, e.Outlet)
+		// Leave(e.Acct) -> leave room
+	case "KEEP-ALIVE":
+		fmt.Println("Event from netmon client")
+		c.update(&e)
+		fallthrough
+	default:
+		dashboard, err := json.Marshal(&DBHeader{Event: "ROOM-UPDATE"})
+		if err != nil {
+			fmt.Println("Error ROOM marshal")
+		}
+		c.hub.bcroom <- dashboard
+	}
+}
+
+func (c *Client) update(e *NetmonHeader) {
+	var netsum map[string]iestStat
+	netsum = make(map[string]iestStat)
+
+	fmt.Println(e)
+
 	c.hub.update(e.Acct)
 	c.hub.netsum(netsum)
+	c.hub.byOperator(netsum)
 
-	//log.Println("after update: ", netsum)
-
-	//dbmsg := &DBHeader{Event: "DB-UPDATE", Operator: "ABLE", Outlet: 1, Terminal: 1, Online: 1}
 	dashboard, _ := json.Marshal(&DBHeader{Event: "DB-UPDATE", Netsum: netsum})
-	//log.Println(dashboard)
-
+	// send event to dashboard channel
 	c.hub.dashboard <- dashboard
 }
 
@@ -118,7 +125,8 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		c.update(message)
+		c.processMsg(message)
+		//c.update(message)
 		c.hub.broadcast <- message
 	}
 }

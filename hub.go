@@ -4,6 +4,8 @@ import (
 	"log"
 	"time"
 	"encoding/json"
+	//"github.com/gorilla/websocket"
+	"fmt"
 )
 
 // Hub contains the information for
@@ -11,6 +13,12 @@ import (
 type Hub struct {
 	// registered clients
 	clients map[*Client]bool
+
+	// Rooms for client connections.
+	rooms map[string]map[*Client]bool
+
+	// Channel for rooms
+	bcroom chan []byte
 
 	// Inbound messages from the clients
 	broadcast chan []byte
@@ -59,6 +67,8 @@ func newHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
+		rooms: 		make(map[string]map[*Client]bool),
+		bcroom:		make(chan []byte),
 		dashboard:	make(chan []byte),
 		iest: 		iestJson,
 	}
@@ -101,6 +111,26 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
+		case t := <-h.bcroom:
+			for i := range h.rooms {
+				c := h.rooms[i]
+				if c == nil {
+					continue
+				}
+				if len(h.rooms[i]) == 0 {
+					continue
+				}
+				for u := range h.rooms[i] {
+					fmt.Println(u)
+					select {
+					case u.send <-t:
+					default:
+						close(u.send)
+						delete(h.rooms[i], u)
+						delete(h.clients, u)
+					}
+				}
+			}
 		case <-hb.C:
 			t := PushTime()
 
@@ -115,6 +145,7 @@ func (h *Hub) run() {
 		case <-tc.C:
 			go h.chkOnline()
 		}
+		//fmt.Print(h.rooms)
 	}
 }
 
@@ -183,4 +214,21 @@ func (h *Hub) chkOnline() {
 	h.netsum(netsum)
 	dashboard, _ := json.Marshal(&DBHeader{Event: "DB-UPDATE", Netsum: netsum})
 	h.dashboard <- dashboard
+}
+
+func (h *Hub) createRoom() {
+	for i := range h.iest {
+		h.rooms[h.iest[i].Operator] = nil
+	}
+}
+
+func (h *Hub) byOperator(m map[string]iestStat) {
+	//var o, t, ol int
+	for k := range m {
+		for i := range h.iest {
+			if h.iest[i].Operator == k {
+
+			}
+		}
+	}
 }
