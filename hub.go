@@ -85,10 +85,25 @@ func (h *Hub) run() {
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.send)
+			//if _, ok := h.clients[client]; ok {
+			//	delete(h.clients, client)
+			//	close(client.send)
+			//}
+			for i := range h.rooms {
+				c := h.rooms[i]
+				if c == nil {
+					continue
+				}
+				if len(h.rooms[i]) == 0 {
+					continue
+				}
+				if _, ok := h.rooms[i][client]; ok {
+					delete(h.rooms[i], client)
+					delete(h.clients, client)
+					close(client.send)
+				}
 			}
+			fmt.Print(h.rooms)
 		case message := <-h.broadcast:
 			//var nmH NetmonHeader
 			//json.Unmarshal(message, &nmH)
