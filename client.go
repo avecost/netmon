@@ -51,8 +51,13 @@ type Client struct {
 
 // DBHeader will contain information needed by Dashboard clients.
 type DBHeader struct {
-	Event		string
-	Netsum 		map[string]iestStat
+	Event		string				`json:"Event"`
+	Netsum 		map[string]iestStat	`json:"Netsum"`
+}
+
+type OutletHeader struct {
+	Event 		string					`json:"Event"`
+	Outsum 		map[string][]*Outlet	`json:"Outsum"`
 }
 
 func (c *Client) processMsg(m []byte) {
@@ -76,11 +81,7 @@ func (c *Client) processMsg(m []byte) {
 		c.update(&e)
 		fallthrough
 	default:
-		dashboard, err := json.Marshal(&DBHeader{Event: "ROOM-UPDATE"})
-		if err != nil {
-			fmt.Println("Error ROOM marshal")
-		}
-		c.hub.bcroom <- dashboard
+		c.hub.byOperator()
 	}
 }
 
@@ -88,11 +89,8 @@ func (c *Client) update(e *NetmonHeader) {
 	var netsum map[string]iestStat
 	netsum = make(map[string]iestStat)
 
-	fmt.Println(e)
-
 	c.hub.update(e.Acct)
 	c.hub.netsum(netsum)
-	c.hub.byOperator(netsum)
 
 	dashboard, _ := json.Marshal(&DBHeader{Event: "DB-UPDATE", Netsum: netsum})
 	// send event to dashboard channel
@@ -127,7 +125,7 @@ func (c *Client) readPump() {
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.processMsg(message)
 		//c.update(message)
-		c.hub.broadcast <- message
+		//c.hub.broadcast <- message
 	}
 }
 

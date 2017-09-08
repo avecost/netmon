@@ -11,6 +11,9 @@ import (
 // Hub contains the information for
 // websocket channels/clients
 type Hub struct {
+	// Dashboard data
+	iest []Franchisee
+
 	// registered clients
 	clients map[*Client]bool
 
@@ -20,6 +23,9 @@ type Hub struct {
 	// Channel for rooms
 	bcroom chan []byte
 
+	// Dashboard
+	dashboard chan []byte
+
 	// Inbound messages from the clients
 	broadcast chan []byte
 
@@ -28,29 +34,29 @@ type Hub struct {
 
 	// Unregister request from the clients
 	unregister chan *Client
-
-	// Dashboard
-	dashboard chan []byte
-
-	// Dashboard data
-	iest []Franchisee
 }
 
 // NetmonHeader is the packet content expected
 // from netmon-c client
 type NetmonHeader struct {
-	Event  string `json:"event"`
-	Outlet string `json:"outlet"`
-	Acct   string `json:"acct"`
-	Privip string `json:"privateip"`
-	Pubip  string `json:"publicip"`
-	Os     string `json:"os"`
+	Event  string	 	`json:"event"`
+	Outlet string 		`json:"outlet"`
+	Acct   string 		`json:"acct"`
+	Privip string 		`json:"privateip"`
+	Pubip  string 		`json:"publicip"`
+	Os     string 		`json:"os"`
 }
 
 type iestStat struct {
-	Outlet		int
-	Terminal 	int
-	Online 		int
+	Outlet		int		`json:"Outlet"`
+	Terminal 	int		`json:"Terminal"`
+	Online 		int		`json:"Online"`
+}
+
+type Outlet struct {
+	Name		string	`json:"Name"`
+	Terminal 	int		`json:"Terminal"`
+	Online 		int		`json:"Online"`
 }
 
 func newHub() *Hub {
@@ -136,13 +142,12 @@ func (h *Hub) run() {
 					continue
 				}
 				for u := range h.rooms[i] {
-					fmt.Println(u)
 					select {
 					case u.send <-t:
 					default:
-						close(u.send)
 						delete(h.rooms[i], u)
 						delete(h.clients, u)
+						close(u.send)
 					}
 				}
 			}
@@ -237,13 +242,30 @@ func (h *Hub) createRoom() {
 	}
 }
 
-func (h *Hub) byOperator(m map[string]iestStat) {
-	//var o, t, ol int
-	for k := range m {
-		for i := range h.iest {
-			if h.iest[i].Operator == k {
+func (h *Hub) byOperator() {
+	var n string
+	var t, ol int
 
+	outletSummary := make(map[string][]*Outlet)
+	for i := range h.iest {
+		r := h.iest[i].Operator
+		for j := range h.iest[i].Outlets {
+			n = h.iest[i].Outlets[j].Name
+			ts := h.iest[i].Outlets[j].Terminals
+			t = t + len(ts)		// terminal count
+			for k := range ts {
+				if ts[k].Status != 2 {					// we only need online terminal
+					ol = ol + 1							// terminal online count
+				}
 			}
+			outletInfo := &Outlet{Name: n, Terminal: t, Online: ol}
+			outletSummary[r] = append(outletSummary[r], outletInfo)
+
+			//fmt.Printf("%s %s %d %d\n", r, n, t, ol)
+			n, t, ol = "", 0, 0
 		}
 	}
+
+	outletDB, _ := json.Marshal(&OutletHeader{Event: "OUTLET-UPDATE", Outsum: outletSummary})
+	h.bcroom <-outletDB
 }

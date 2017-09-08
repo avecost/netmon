@@ -21,9 +21,13 @@
 
     ws.onmessage = function(evt)
     {
-        console.log(evt)
-        // we expect a filtered broadcast based on Outlet parameter
-        // if evt.Event == Outlet
+        var t = JSON.parse(evt.data);
+        if (t.Event === "OUTLET-UPDATE") {
+            console.log(t.Outsum);
+        } else if (t.Event === "TIME-UPDATE") {
+            console.log(t.ServerT);
+        }
+
     };
 
     ws.onclose = function()

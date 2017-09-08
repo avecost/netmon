@@ -60,6 +60,22 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
+func outletHandler(w http.ResponseWriter, r *http.Request) {
+	logRoute(r.URL, r.Method)
+	if r.URL.Path != "/outlet" {
+		notFoundPage(w, r)
+		return
+	}
+
+	if r.Method != "GET" {
+		badMethodPage(w, r)
+		return
+	}
+
+	tmpl := template.Must(template.ParseFiles("tmpl/outlet.gtpl"))
+	tmpl.Execute(w, nil)
+}
+
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 	logRoute(r.URL, r.Method)
 	if r.URL.Path != "/" {
@@ -94,7 +110,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	u := r.FormValue("username")
 	p := r.FormValue("password")
 
-	if u == "test" && p == "test" {
+	if u == "ABLE" && p == "00ABLE00" {
 		sess, _ := netmonSess.Get(r, "netmon")
 		sess.Values["user"] = u
 		err := sess.Save(r, w)
@@ -181,6 +197,7 @@ func main() {
 	mux.HandleFunc("/login", loginHandler)
 	mux.HandleFunc("/logout", logoutHandler)
 	mux.HandleFunc("/dashboard", dashboardHandler)
+	mux.HandleFunc("/outlet", outletHandler)
 	mux.HandleFunc("/test", testHandler)
 	mux.HandleFunc("/test2", test2Handler)
 
