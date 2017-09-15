@@ -105,24 +105,27 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: perform validation of Credentials
-	r.ParseForm()
-	u := r.FormValue("username")
-	p := r.FormValue("password")
+	if r.Method == "POST" {
+		// TODO: perform validation of Credentials
+		r.ParseForm()
+		u := r.FormValue("username")
+		p := r.FormValue("password")
+		if u == "ABLE" && p == "00ABLE00" {
+			sess, _ := netmonSess.Get(r, "netmon")
+			sess.Values["user"] = u
+			err := sess.Save(r, w)
+			if err != nil {
+				http.Error(w, err.Error(), 400)
+				return
+			}
 
-	if u == "ABLE" && p == "00ABLE00" {
-		sess, _ := netmonSess.Get(r, "netmon")
-		sess.Values["user"] = u
-		err := sess.Save(r, w)
-		if err != nil {
-			http.Error(w, err.Error(), 400)
-			return
+			http.Redirect(w, r, "/dashboard", 301)
+		} else {
+			fmt.Fprintf(w, "%s", "Invalid credentials!")
 		}
-
-		http.Redirect(w, r, "/dashboard", 301)
-	} else {
-		fmt.Fprintf(w, "%s", "Invalid credentials!")
 	}
+
+
 }
 
 func testHandler(w http.ResponseWriter, r *http.Request) {

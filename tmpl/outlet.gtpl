@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
 
     <!-- App style -->
-    <link rel="stylesheet" href="/public/css/app.css">
+    <link rel="stylesheet" href="/public/css/app-outlet.css">
 </head>
 <body style="height: auto; min-height: 100%;">
 <div id="app" class="wrapper" style="height: auto; min-height: 100%;">
@@ -30,18 +30,16 @@
                 <div class="col-lg-3 col-xs-6" v-for="(f, k, idx) in outlets">
                     <div v-bind:class="getInfoBoxClass(f.Terminal, f.Online)">
                         <div class="inner">
-                            <h5>${ f.Name }</h5>
-                            <div class="stat-detail">
-                                <span>Total Terminals:</span>
-                                <span class="pull-right">${ f.Terminal }</span>
+                            <div class="row text-center">
+                                <h5 style="font-size: 12px; font-weight: 700;">${ f.Name }</h5>
                             </div>
-                            <div class="stat-detail">
-                                <span>Total Online:</span>
-                                <span class="pull-right">${ f.Online }</span>
+                            <div class="row outlet-container">
+                                <div class="col-xs-3 text-center">${ getUtilization(f.Terminal, f.Online) }<sup style="font-size: 10px">%</sup></div>
+                                <div class="col-xs-3 text-right">Terminals</div>
+                                <div class="col-xs-2 text-center">${ f.Terminal }</div>
+                                <div class="col-xs-2 text-right">Online</div>
+                                <div class="col-xs-2 text-center">${ f.Online }</div>
                             </div>
-                        </div>
-                        <div class="percent">
-                            <h3>${ getUtilization(f.Terminal, f.Online) }<sup style="font-size: 20px">%</sup></h3>
                         </div>
                         <a href="#!" class="info-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                     </div>
