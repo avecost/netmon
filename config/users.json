@@ -1,0 +1,17 @@
+[
+  {
+    "user": "ADMIN",
+    "password": "$2y$10$DCCC43.5mLNSaDqkuv8Pp.RaGidbNuW/sqbpg7.0kET63onKnMxPq",
+    "url": ["/selected"]
+  },
+  {
+    "user": "ABLE",
+    "password": "$2y$10$DCCC43.5mLNSaDqkuv8Pp.RaGidbNuW/sqbpg7.0kET63onKnMxPq",
+    "url": ["/selected"]
+  },
+  {
+    "user": "ICBI",
+    "password": "$2y$10$DCCC43.5mLNSaDqkuv8Pp.RaGidbNuW/sqbpg7.0kET63onKnMxPq",
+    "url": []
+  }
+]

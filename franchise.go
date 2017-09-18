@@ -3,7 +3,6 @@ package main
 import (
 	"io/ioutil"
 	"encoding/json"
-	//"os"
 )
 
 // Franchisee struct contains name and Outlets
@@ -24,8 +23,6 @@ type Franchisee struct {
 }
 
 func loadOutlet(file string) ([]Franchisee, error) {
-	//pwd, _ := os.Getwd()
-	//configJson, err := ioutil.ReadFile(pwd+file)
 	configJson, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
