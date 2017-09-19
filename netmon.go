@@ -1,16 +1,16 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"flag"
 	"log"
+	"strings"
+	"net/url"
 	"net/http"
 	"html/template"
-	"net/url"
-	"fmt"
+
 	"github.com/gorilla/mux"
-	"os"
-	//"strings"
-	"strings"
 )
 
 const (
@@ -56,6 +56,28 @@ func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Error parsing template")
 		}
 		tpl.Execute(w, nil)
+	} else {
+		http.Redirect(w, r, "/", 302)
+	}
+}
+
+func terminalHandler(w http.ResponseWriter, r *http.Request) {
+	type Outlet struct {
+		Operator string
+		Name string
+	}
+
+	r.ParseForm()
+	operator := strings.ToUpper(r.FormValue("o"))
+	outlet := strings.ToUpper(r.FormValue("t"))
+	d := Outlet{Operator: operator, Name: outlet}
+
+	if UserAllowedURL(Users, Username(r), r.URL.Path) {
+		tpl, err := template.ParseFiles("tmpl/terminal.gtpl")
+		if err != nil {
+			fmt.Println("Error parsing template")
+		}
+		tpl.Execute(w, d)
 	} else {
 		http.Redirect(w, r, "/", 302)
 	}
@@ -157,16 +179,6 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", 302)
 }
 
-func testHandler(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles("tmpl/test.gtpl")
-	t.Execute(w, nil)
-}
-
-func test2Handler(w http.ResponseWriter, r *http.Request) {
-	t, _ := template.ParseFiles("tmpl/test2.gtpl")
-	t.Execute(w, nil)
-}
-
 func main() {
 	var err error
 
@@ -191,8 +203,7 @@ func main() {
 	mux.HandleFunc("/operator", RequiresLogin(operatorHandler))
 	mux.HandleFunc("/dashboard", RequiresLogin(dashboardHandler))
 	mux.HandleFunc("/outlet", RequiresLogin(outletHandler))
-	mux.HandleFunc("/test", testHandler)
-	mux.HandleFunc("/test2", test2Handler)
+	mux.HandleFunc("/terminal", RequiresLogin(terminalHandler))
 	mux.HandleFunc("/login", loginHandler)
 	mux.HandleFunc("/logout", logoutHandler)
 	mux.HandleFunc("/", homeHandler)
