@@ -10,17 +10,21 @@ var App = new Vue({
         serverDT: '',
         test: 'hello',
         UtilPercent: 0,
-        ServerT: ''
+        ServerT: '',
+        operatorName: ''
     },
 
     created: function() {
+        this.operatorName = document.getElementById("operator").value;
+        console.log(this.operatorName);
+
         ws.onopen = function(evt) {
             console.log('Connected to ws.');
             console.log('joining room.');
             ws.send(JSON.stringify({
                 "Event": "JOIN",
                 "Acct": "user1",
-                "Outlet": "ABLE"
+                "Outlet": this.operatorName
             }));
         }.bind(this);
 
@@ -28,7 +32,7 @@ var App = new Vue({
             var t = JSON.parse(evt.data);
             if (t.Event === "OUTLET-UPDATE") {
                 for (var k in t.Outsum) {
-                    if (k === "ABLE") {
+                    if (k === this.operatorName) {
                         this.outlets = t.Outsum[k];
                     }
                 }

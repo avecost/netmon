@@ -8,7 +8,9 @@ import (
 	"net/url"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
+	"os"
+	//"strings"
+	"strings"
 )
 
 const (
@@ -23,9 +25,12 @@ const (
 	STATIC_DIR			= "./public"	// folder name
 )
 
+// server runtime config
 var addr = flag.String("addr", ":9000", "http service address")
-var netmonSess = sessions.NewCookieStore([]byte("9c3803d77fb840311dfd9dabd01da5e1"))
+// server allowed users
+var Users = []AppUser{}
 
+//var netmonSess = sessions.NewCookieStore([]byte("9c3803d77fb840311dfd9dabd01da5e1"))
 //var iest []Franchisee
 
 func logRoute(s *url.URL, m string) {
@@ -45,46 +50,60 @@ func unauthorizedPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
-	logRoute(r.URL, r.Method)
-	if r.URL.Path != "/dashboard" {
-		notFoundPage(w, r)
-		return
+	if UserAllowedURL(Users, Username(r), r.URL.Path) {
+		tpl, err := template.ParseFiles("tmpl/dashboard.gtpl")
+		if err != nil {
+			fmt.Println("Error parsing template")
+		}
+		tpl.Execute(w, nil)
+	} else {
+		http.Redirect(w, r, "/", 302)
 	}
-
-	if r.Method != "GET" {
-		badMethodPage(w, r)
-		return
-	}
-
-	tmpl := template.Must(template.ParseFiles("tmpl/dashboard.gtpl"))
-	tmpl.Execute(w, nil)
 }
 
 func outletHandler(w http.ResponseWriter, r *http.Request) {
-	logRoute(r.URL, r.Method)
-	if r.URL.Path != "/outlet" {
-		notFoundPage(w, r)
-		return
+	type Operator struct {
+		Name string
 	}
 
-	if r.Method != "GET" {
-		badMethodPage(w, r)
-		return
+	r.ParseForm()
+	operator := strings.ToUpper(r.FormValue("o"))
+	d := Operator{Name: operator}
+
+	if UserAllowedURL(Users, Username(r), r.URL.Path) {
+		tpl, err := template.ParseFiles("tmpl/outlet.gtpl")
+		if err != nil {
+			fmt.Println("Error parsing template")
+		}
+		tpl.Execute(w, d)
+	} else {
+		http.Redirect(w, r, "/", 302)
+	}
+}
+
+func operatorHandler(w http.ResponseWriter, r *http.Request) {
+	type Operator struct {
+		Name string
 	}
 
-	tmpl := template.Must(template.ParseFiles("tmpl/outlet.gtpl"))
-	tmpl.Execute(w, nil)
+	r.ParseForm()
+	operator := strings.ToUpper(r.FormValue("o"))
+	d := Operator{Name: operator}
+
+	if UserAllowedURL(Users, Username(r), r.URL.Path) {
+		tpl, err := template.ParseFiles("tmpl/outlet.gtpl")
+		if err != nil {
+			fmt.Println("Error parsing template")
+		}
+		tpl.Execute(w, d)
+	} else {
+		http.Redirect(w, r, "/", 302)
+	}
 }
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
-	logRoute(r.URL, r.Method)
-	if r.URL.Path != "/" {
-		notFoundPage(w, r)
-		return
-	}
-
-	if r.Method != "GET" {
-		badMethodPage(w, r)
+	if IsLoggedIn(r) {
+		http.Redirect(w, r, HomeUrl(Users, Username(r)), 302)
 		return
 	}
 
@@ -93,39 +112,49 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	logRoute(r.URL, r.Method)
-	if r.URL.Path != "/login" {
-		notFoundPage(w, r)
-		return
-	}
-
-	if r.Method == "GET" {
-		t, _ := template.ParseFiles("tmpl/login.gtpl")
-		t.Execute(w, nil)
-		return
-	}
-
-	if r.Method == "POST" {
-		// TODO: perform validation of Credentials
-		r.ParseForm()
-		u := r.FormValue("username")
-		p := r.FormValue("password")
-		if u == "ABLE" && p == "00ABLE00" {
-			sess, _ := netmonSess.Get(r, "netmon")
-			sess.Values["user"] = u
-			err := sess.Save(r, w)
-			if err != nil {
-				http.Error(w, err.Error(), 400)
-				return
+	session, err := AppSess.Get(r, "session")
+	tpl, _ := template.ParseFiles("tmpl/login.gtpl")
+	if err != nil {
+		tpl.Execute(w, nil)
+	} else {
+		isLoggedIn := session.Values["loggedIn"]
+		if isLoggedIn != true {
+			if r.Method == "POST" {
+				if ValidUser(r.FormValue("username"), r.FormValue("password"), Users) {
+					session.Values["loggedIn"] = true
+					session.Values["username"] = r.FormValue("username")
+					session.Save(r, w)
+					http.Redirect(w, r, HomeUrl(Users, strings.ToUpper(r.FormValue("username"))), 302)
+					return
+				} else {
+					http.Redirect(w, r, "/login", 302)
+				}
+			} else if r.Method == "GET" {
+				tpl.Execute(w, nil)
 			}
-
-			http.Redirect(w, r, "/dashboard", 301)
 		} else {
-			fmt.Fprintf(w, "%s", "Invalid credentials!")
+			http.Redirect(w, r, "/", 302)
 		}
 	}
+}
 
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, err := AppSess.Get(r, "session")
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
 
+	session.Options.MaxAge = -1
+	session.Values["loggedIn"] = false
+	session.Values["username"] = ""
+	err = session.Save(r, w)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+
+	http.Redirect(w, r, "/", 302)
 }
 
 func testHandler(w http.ResponseWriter, r *http.Request) {
@@ -138,53 +167,16 @@ func test2Handler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, nil)
 }
 
-func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	sess, err := netmonSess.Get(r, "netmon")
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
-	sess.Options.MaxAge = -1
-
-	err = sess.Save(r, w)
-	if err != nil {
-		http.Error(w, err.Error(), 400)
-		return
-	}
-
-	http.Redirect(w, r, "/", 301)
-}
-
-func sessHandler(w http.ResponseWriter, r *http.Request) {
-	logRoute(r.URL, r.Method)
-
-	session, _ := netmonSess.Get(r, "netmon")
-	u := session.Values["user"]
-	fmt.Fprintf(w, "%s", u)
-}
-
-func userAllowed(r string, u string) (b bool) {
-	// TODO: perform lookup functions for route and user
-	fmt.Printf("R: %s U: %s\n", r, u)
-
-	return true
-}
-
-
-func SecuredRoute(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if ! userAllowed(r.URL.Path, "test") {
-			unauthorizedPage(w, r)
-			return
-		}
-		h.ServeHTTP(w, r)
-	})
-}
-
 func main() {
+	var err error
 
 	flag.Parse()
+	Users, err = loadUsers("./config/users.json")
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
 	hub := newHub()
 	// create room based on operator
 	hub.createRoom()
@@ -196,13 +188,15 @@ func main() {
 	// route to the static folder (css/js/img)
 	mux.PathPrefix(STATIC_PATH).Handler(http.StripPrefix(STATIC_PATH, http.FileServer(http.Dir(STATIC_DIR))))
 	// application routes
-	mux.HandleFunc("/", homeHandler)
-	mux.HandleFunc("/login", loginHandler)
-	mux.HandleFunc("/logout", logoutHandler)
-	mux.HandleFunc("/dashboard", dashboardHandler)
-	mux.HandleFunc("/outlet", outletHandler)
+	mux.HandleFunc("/operator", RequiresLogin(operatorHandler))
+	mux.HandleFunc("/dashboard", RequiresLogin(dashboardHandler))
+	mux.HandleFunc("/outlet", RequiresLogin(outletHandler))
 	mux.HandleFunc("/test", testHandler)
 	mux.HandleFunc("/test2", test2Handler)
+	mux.HandleFunc("/login", loginHandler)
+	mux.HandleFunc("/logout", logoutHandler)
+	mux.HandleFunc("/", homeHandler)
+
 
 	// websocket route
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {

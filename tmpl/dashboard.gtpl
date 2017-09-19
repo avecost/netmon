@@ -47,7 +47,7 @@
                         <div class="percent">
                             <h3>${ getUtilization(f.Terminal, f.Online) }<sup style="font-size: 20px">%</sup></h3>
                         </div>
-                        <a href="#!" class="info-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
+                        <a v-bind:href=getOperator(k) class="info-box-footer">More info <i class="fa fa-arrow-circle-right"></i></a>
                     </div>
                 </div>
             </div>

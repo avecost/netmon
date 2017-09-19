@@ -63,6 +63,10 @@ var App = new Vue({
 
         getUtilization: function (t, o) {
             return ((o / t) * 100).toFixed(2);
+        },
+
+        getOperator: function (k) {
+            return "/operator?o=" + k;
         }
     }
 

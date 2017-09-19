@@ -25,6 +25,7 @@
         </nav>
     </header>
     <div class="content-wrapper" style="min-height: 916px;">
+        <input type="hidden" value="{{ .Name }}" name="operator" id="operator" />
         <section class="content">
             <div class="row">
                 <div class="col-lg-3 col-xs-6" v-for="(f, k, idx) in outlets">

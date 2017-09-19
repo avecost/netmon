@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 )
 
@@ -12,15 +11,15 @@ type AppUser struct {
 	Url      []string `json:"url"`
 }
 
-func LoadUsers(file string) []AppUser {
+func loadUsers(file string) ([]AppUser, error) {
 	var users []AppUser
 	configFile, err := os.Open(file)
 	defer configFile.Close()
 
 	if err != nil {
-		fmt.Println(err.Error())
+		return nil, err
 	}
 	jsonParser := json.NewDecoder(configFile)
 	jsonParser.Decode(&users)
-	return users
+	return users, nil
 }
