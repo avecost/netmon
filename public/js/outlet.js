@@ -8,7 +8,6 @@ var App = new Vue({
     data: {
         outlets: [],
         serverDT: '',
-        test: 'hello',
         UtilPercent: 0,
         ServerT: '',
         operatorName: ''
@@ -23,7 +22,7 @@ var App = new Vue({
             console.log('joining room.');
             ws.send(JSON.stringify({
                 "Event": "JOIN",
-                "Acct": "user1",
+                "Acct": this.operatorName,
                 "Outlet": this.operatorName
             }));
         }.bind(this);

@@ -1,12 +1,9 @@
 package main
 
 import (
-	"github.com/gorilla/sessions"
 	"net/http"
 	"log"
 )
-
-var AppSess = sessions.NewCookieStore([]byte("AVECOST"))
 
 func IsLoggedIn(r *http.Request) bool {
 	session, err := AppSess.Get(r, "session")

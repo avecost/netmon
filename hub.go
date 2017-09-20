@@ -4,8 +4,6 @@ import (
 	"log"
 	"time"
 	"encoding/json"
-	//"github.com/gorilla/websocket"
-	"fmt"
 )
 
 // Hub contains the information for
@@ -60,14 +58,11 @@ type Outlet struct {
 }
 
 func newHub() *Hub {
-	iestJson, _ := loadOutlet("./config/outlet.json")
-
-	//iestJson, _ := loadOutlet("/home/whiskie/netmon/config/outlet.json")
-	//iestJson, err := loadOutlet("/config/outlet.json")
-	//if err != nil {
-	//	log.Printf("Error: %s\n", err)
-	//	panic("error loading config file.")
-	//}
+	iestJson, err := loadOutlet(APP_DIR + "config/outlet.json")
+	if err != nil {
+		log.Printf("Error: %s\n", err)
+		panic("error loading config file.")
+	}
 	return &Hub{
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
@@ -109,7 +104,6 @@ func (h *Hub) run() {
 					close(client.send)
 				}
 			}
-			fmt.Print(h.rooms)
 		case message := <-h.broadcast:
 			//var nmH NetmonHeader
 			//json.Unmarshal(message, &nmH)
@@ -142,12 +136,14 @@ func (h *Hub) run() {
 					continue
 				}
 				for u := range h.rooms[i] {
+					log.Println(h.rooms[i])
+
 					select {
 					case u.send <-t:
-					default:
-						delete(h.rooms[i], u)
-						delete(h.clients, u)
-						close(u.send)
+					//default:
+					//	close(u.send)
+					//	delete(h.rooms[i], u)
+					//	delete(h.clients, u)
 					}
 				}
 			}
@@ -165,7 +161,6 @@ func (h *Hub) run() {
 		case <-tc.C:
 			go h.chkOnline()
 		}
-		//fmt.Print(h.rooms)
 	}
 }
 

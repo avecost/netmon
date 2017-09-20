@@ -77,7 +77,6 @@ func (c *Client) processMsg(m []byte) {
 		fmt.Printf("%u LEAVE room: %s\n", e.Acct, e.Outlet)
 		// Leave(e.Acct) -> leave room
 	case "KEEP-ALIVE":
-		fmt.Println("Event from netmon client")
 		c.update(&e)
 		fallthrough
 	default:
@@ -124,7 +123,7 @@ func (c *Client) readPump() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		c.processMsg(message)
-		//c.update(message)
+
 		//c.hub.broadcast <- message
 	}
 }

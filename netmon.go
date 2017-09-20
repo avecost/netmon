@@ -11,6 +11,7 @@ import (
 	"html/template"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 const (
@@ -18,19 +19,22 @@ const (
 	TICKER_SERVER_TIME 	= 1				// run every (second)
 	TICKER_ONLINE_TIME	= 15			// run every (second)
 
-	TIME_ZONE 			= "Asia/Manila"			// local datetime
-	TIME_FORMAT 		= "2006-01-02 15:04:05"	// how datetime is formatted
+	TIME_ZONE 			= "Asia/Manila"				// local datetime
+	TIME_FORMAT 		= "2006-01-02 15:04:05"		// how datetime is formatted
 
-	STATIC_PATH 		= "/public/"	// URL css/js folder
-	STATIC_DIR			= "./public"	// folder name
+	//APP_DIR				= "/home/whiskie/netmon/"	// App home directory
+	APP_DIR				= "./"						// Win Dev folder
+	STATIC_PATH 		= "/public/"				// URL css/js folder
+	STATIC_DIR			= "./public"				// folder name
 )
 
 // server runtime config
 var addr = flag.String("addr", ":9000", "http service address")
 // server allowed users
 var Users = []AppUser{}
+// Application global session variable
+var AppSess = sessions.NewCookieStore([]byte("AVECOST"))
 
-//var netmonSess = sessions.NewCookieStore([]byte("9c3803d77fb840311dfd9dabd01da5e1"))
 //var iest []Franchisee
 
 func logRoute(s *url.URL, m string) {
@@ -38,20 +42,20 @@ func logRoute(s *url.URL, m string) {
 }
 
 func notFoundPage(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "tmpl/404.gtpl")
+	http.ServeFile(w, r, APP_DIR + "tmpl/404.gtpl")
 }
 
 func badMethodPage(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "tmpl/405.gtpl")
+	http.ServeFile(w, r, APP_DIR + "tmpl/405.gtpl")
 }
 
 func unauthorizedPage(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "tmpl/401.gtpl")
+	http.ServeFile(w, r, APP_DIR + "tmpl/401.gtpl")
 }
 
 func dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	if UserAllowedURL(Users, Username(r), r.URL.Path) {
-		tpl, err := template.ParseFiles("tmpl/dashboard.gtpl")
+		tpl, err := template.ParseFiles(APP_DIR + "tmpl/dashboard.gtpl")
 		if err != nil {
 			fmt.Println("Error parsing template")
 		}
@@ -73,7 +77,7 @@ func terminalHandler(w http.ResponseWriter, r *http.Request) {
 	d := Outlet{Operator: operator, Name: outlet}
 
 	if UserAllowedURL(Users, Username(r), r.URL.Path) {
-		tpl, err := template.ParseFiles("tmpl/terminal.gtpl")
+		tpl, err := template.ParseFiles(APP_DIR + "tmpl/terminal.gtpl")
 		if err != nil {
 			fmt.Println("Error parsing template")
 		}
@@ -93,7 +97,7 @@ func outletHandler(w http.ResponseWriter, r *http.Request) {
 	d := Operator{Name: operator}
 
 	if UserAllowedURL(Users, Username(r), r.URL.Path) {
-		tpl, err := template.ParseFiles("tmpl/outlet.gtpl")
+		tpl, err := template.ParseFiles(APP_DIR + "tmpl/outlet.gtpl")
 		if err != nil {
 			fmt.Println("Error parsing template")
 		}
@@ -113,7 +117,7 @@ func operatorHandler(w http.ResponseWriter, r *http.Request) {
 	d := Operator{Name: operator}
 
 	if UserAllowedURL(Users, Username(r), r.URL.Path) {
-		tpl, err := template.ParseFiles("tmpl/outlet.gtpl")
+		tpl, err := template.ParseFiles(APP_DIR + "tmpl/outlet.gtpl")
 		if err != nil {
 			fmt.Println("Error parsing template")
 		}
@@ -129,13 +133,13 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := template.Must(template.ParseFiles("tmpl/login.gtpl"))
+	tmpl := template.Must(template.ParseFiles(APP_DIR + "tmpl/login.gtpl"))
 	tmpl.Execute(w, nil)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	session, err := AppSess.Get(r, "session")
-	tpl, _ := template.ParseFiles("tmpl/login.gtpl")
+	tpl, _ := template.ParseFiles(APP_DIR + "tmpl/login.gtpl")
 	if err != nil {
 		tpl.Execute(w, nil)
 	} else {
@@ -183,7 +187,7 @@ func main() {
 	var err error
 
 	flag.Parse()
-	Users, err = loadUsers("./config/users.json")
+	Users, err = loadUsers(APP_DIR + "config/users.json")
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
