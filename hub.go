@@ -4,6 +4,7 @@ import (
 	"log"
 	"time"
 	"encoding/json"
+	"fmt"
 )
 
 // Hub contains the information for
@@ -104,6 +105,7 @@ func (h *Hub) run() {
 					close(client.send)
 				}
 			}
+			fmt.Printf("unreg: %v\n", h.clients)
 		case message := <-h.broadcast:
 			//var nmH NetmonHeader
 			//json.Unmarshal(message, &nmH)
@@ -117,6 +119,7 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
+			fmt.Printf("broadcast: %v\n", h.clients)
 		case dashboard := <-h.dashboard:
 			for client := range h.clients {
 				select {
@@ -126,6 +129,7 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
+			fmt.Printf("dashboard: %v\n", h.clients)
 		case t := <-h.bcroom:
 			for i := range h.rooms {
 				c := h.rooms[i]
@@ -147,6 +151,7 @@ func (h *Hub) run() {
 					}
 				}
 			}
+			fmt.Printf("bcroom: %v\n", h.clients)
 		case <-hb.C:
 			t := PushTime()
 
@@ -158,6 +163,7 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
+			fmt.Printf("ticker: %v\n", h.clients)
 		case <-tc.C:
 			go h.chkOnline()
 		}
