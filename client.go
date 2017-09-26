@@ -73,6 +73,7 @@ func (c *Client) processMsg(m []byte) {
 			c.hub.rooms[e.Outlet] = r
 		}
 		c.hub.rooms[e.Outlet][c] = true
+		fmt.Printf("Room: %v\n", c.hub.rooms)
 	case "LEAVE":
 		fmt.Printf("%u LEAVE room: %s\n", e.Acct, e.Outlet)
 		// Leave(e.Acct) -> leave room

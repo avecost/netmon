@@ -76,6 +76,23 @@ func newHub() *Hub {
 	}
 }
 
+func (h *Hub) removeClient(client *Client) {
+	if _, ok := h.clients[client]; ok {
+		delete(h.clients, client)
+		close(client.send)
+	}
+	for k, r := range h.rooms {
+		if len(r) > 0 {
+			if _, ok := h.rooms[k][client]; ok {
+				delete(h.rooms[k],client)
+			}
+		}
+	}
+	for k, r := range h.rooms {
+		fmt.Printf("R: %v c: %d\n", k, len(r))
+	}
+}
+
 func (h *Hub) run() {
 	// ticker check inactive terminal every 15s
 	tc := time.NewTicker(time.Second * TICKER_ONLINE_TIME)
@@ -87,24 +104,25 @@ func (h *Hub) run() {
 		case client := <-h.register:
 			h.clients[client] = true
 		case client := <-h.unregister:
+			h.removeClient(client)
 			//if _, ok := h.clients[client]; ok {
 			//	delete(h.clients, client)
 			//	close(client.send)
 			//}
-			for i := range h.rooms {
-				c := h.rooms[i]
-				if c == nil {
-					continue
-				}
-				if len(h.rooms[i]) == 0 {
-					continue
-				}
-				if _, ok := h.rooms[i][client]; ok {
-					delete(h.rooms[i], client)
-					delete(h.clients, client)
-					close(client.send)
-				}
-			}
+			//for i := range h.rooms {
+			//	c := h.rooms[i]
+			//	if c == nil {
+			//		continue
+			//	}
+			//	if len(h.rooms[i]) == 0 {
+			//		continue
+			//	}
+			//	if _, ok := h.rooms[i][client]; ok {
+			//		delete(h.rooms[i], client)
+			//		delete(h.clients, client)
+			//		close(client.send)
+			//	}
+			//}
 			fmt.Printf("unreg: %v\n", h.clients)
 		case message := <-h.broadcast:
 			//var nmH NetmonHeader
@@ -140,18 +158,19 @@ func (h *Hub) run() {
 					continue
 				}
 				for u := range h.rooms[i] {
-					log.Println(h.rooms[i])
+					fmt.Printf("Room: %v\n", h.rooms[i])
+					fmt.Printf("bcroom: %v\n", u)
 
 					select {
-					case u.send <-t:
-					//default:
-					//	close(u.send)
-					//	delete(h.rooms[i], u)
-					//	delete(h.clients, u)
+					case u.send <- t:
+
+						//default:
+						//	close(u.send)
+						//	delete(h.rooms[i], u)
+						//	delete(h.clients, u)
 					}
 				}
 			}
-			fmt.Printf("bcroom: %v\n", h.clients)
 		case <-hb.C:
 			t := PushTime()
 
