@@ -66,17 +66,14 @@ func (c *Client) processMsg(m []byte) {
 
 	switch e.Event {
 	case "JOIN":
-		fmt.Printf("%s JOIN Room: %s\n", e.Acct, e.Outlet)
 		r := c.hub.rooms[e.Outlet]
 		if r == nil {
 			r = make(map[*Client]bool)
 			c.hub.rooms[e.Outlet] = r
 		}
 		c.hub.rooms[e.Outlet][c] = true
-		fmt.Printf("Room: %v\n", c.hub.rooms)
 	case "LEAVE":
 		fmt.Printf("%u LEAVE room: %s\n", e.Acct, e.Outlet)
-		// Leave(e.Acct) -> leave room
 	case "KEEP-ALIVE":
 		c.update(&e)
 		fallthrough

@@ -4,7 +4,6 @@ import (
 	"log"
 	"time"
 	"encoding/json"
-	"fmt"
 )
 
 // Hub contains the information for
@@ -61,7 +60,6 @@ type Outlet struct {
 func newHub() *Hub {
 	iestJson, err := loadOutlet(APP_DIR + "config/outlet.json")
 	if err != nil {
-		log.Printf("Error: %s\n", err)
 		panic("error loading config file.")
 	}
 	return &Hub{
@@ -88,9 +86,6 @@ func (h *Hub) removeClient(client *Client) {
 			}
 		}
 	}
-	for k, r := range h.rooms {
-		fmt.Printf("R: %v c: %d\n", k, len(r))
-	}
 }
 
 func (h *Hub) run() {
@@ -105,30 +100,7 @@ func (h *Hub) run() {
 			h.clients[client] = true
 		case client := <-h.unregister:
 			h.removeClient(client)
-			//if _, ok := h.clients[client]; ok {
-			//	delete(h.clients, client)
-			//	close(client.send)
-			//}
-			//for i := range h.rooms {
-			//	c := h.rooms[i]
-			//	if c == nil {
-			//		continue
-			//	}
-			//	if len(h.rooms[i]) == 0 {
-			//		continue
-			//	}
-			//	if _, ok := h.rooms[i][client]; ok {
-			//		delete(h.rooms[i], client)
-			//		delete(h.clients, client)
-			//		close(client.send)
-			//	}
-			//}
-			fmt.Printf("unreg: %v\n", h.clients)
 		case message := <-h.broadcast:
-			//var nmH NetmonHeader
-			//json.Unmarshal(message, &nmH)
-			//log.Printf("<%s> %s %s %s %s %s\n", nmH.Event, nmH.Outlet, nmH.Acct, nmH.Privip, nmH.Pubip, nmH.Os)
-
 			for client := range h.clients {
 				select {
 				case client.send <- message:
@@ -137,7 +109,6 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
-			fmt.Printf("broadcast: %v\n", h.clients)
 		case dashboard := <-h.dashboard:
 			for client := range h.clients {
 				select {
@@ -147,7 +118,6 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
-			fmt.Printf("dashboard: %v\n", h.clients)
 		case t := <-h.bcroom:
 			for i := range h.rooms {
 				c := h.rooms[i]
@@ -158,17 +128,10 @@ func (h *Hub) run() {
 					continue
 				}
 				for u := range h.rooms[i] {
-					fmt.Printf("Room: %v\n", h.rooms[i])
-					fmt.Printf("bcroom: %v\n", u)
-
-					select {
-					case u.send <- t:
-
-						//default:
-						//	close(u.send)
-						//	delete(h.rooms[i], u)
-						//	delete(h.clients, u)
-					}
+					u.send <- t
+					//select {
+					//case u.send <- t:
+					//}
 				}
 			}
 		case <-hb.C:
@@ -182,7 +145,6 @@ func (h *Hub) run() {
 					delete(h.clients, client)
 				}
 			}
-			fmt.Printf("ticker: %v\n", h.clients)
 		case <-tc.C:
 			go h.chkOnline()
 		}
