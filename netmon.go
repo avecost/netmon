@@ -22,10 +22,15 @@ const (
 	TIME_ZONE 			= "Asia/Manila"				// local datetime
 	TIME_FORMAT 		= "2006-01-02 15:04:05"		// how datetime is formatted
 
-	//APP_DIR				= "/home/whiskie/netmon/"	// App home directory
-	APP_DIR				= "./"						// Win Dev folder
 	STATIC_PATH 		= "/public/"				// URL css/js folder
-	STATIC_DIR			= "./public"				// folder name
+
+	// server config
+	APP_DIR				= "/home/whiskie/netmon/"			// App home directory
+	STATIC_DIR			= "/home/whiskie/netmon/public/"	// folder name
+
+	// dev config
+	//APP_DIR			= "./"					// Win Dev folder
+	//STATIC_DIR		= "./public"
 )
 
 // server runtime config

@@ -102,21 +102,23 @@ func (h *Hub) run() {
 			h.removeClient(client)
 		case message := <-h.broadcast:
 			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
+				client.send <- message
+				//select {
+				//case client.send <- message:
+				//default:
+				//	close(client.send)
+				//	delete(h.clients, client)
+				//}
 			}
 		case dashboard := <-h.dashboard:
 			for client := range h.clients {
-				select {
-				case client.send <- dashboard:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
+				client.send <- dashboard
+				//select {
+				//case client.send <- dashboard:
+				//default:
+				//	close(client.send)
+				//	delete(h.clients, client)
+				//}
 			}
 		case t := <-h.bcroom:
 			for i := range h.rooms {
@@ -138,12 +140,13 @@ func (h *Hub) run() {
 			t := PushTime()
 
 			for client := range h.clients {
-				select {
-				case client.send <- t:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
+				client.send <- t
+				//select {
+				//case client.send <- t:
+				//default:
+				//	close(client.send)
+				//	delete(h.clients, client)
+				//}
 			}
 		case <-tc.C:
 			go h.chkOnline()
